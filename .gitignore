@@ -1,0 +1,15 @@
+# Python
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
+.venv/
+.env
+
+# Generated data
+data/raw/
+data/output/
+data/processed/
+
+# Keep small sample data
+!data/samples/
+!data/samples/sample_records.json
