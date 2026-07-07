@@ -43,11 +43,15 @@ def main():
 
     final_df = parsed_df.select("data.*").filter(col("source") == "openmeteo")
 
+    output_path = "data/bronze/air_quality_raw/"
+    checkpoint_path = "data/checkpoints/bronze_air_quality raw/"
+
     query = (
     final_df.writeStream
-    .format("console")
-    .option("truncate", "false")
-    .option("numRows", 20)
+    .format("parquet")
+    .option("path", output_path)
+    .option("checkpointLocation", checkpoint_path)
+    .outputMode("append")
     .start()
 )
     print("Spark streaming query started successfully")

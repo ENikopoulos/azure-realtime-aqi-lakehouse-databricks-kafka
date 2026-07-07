@@ -10,6 +10,8 @@ __pycache__/
 data/raw/
 data/output/
 data/processed/
+data/bronze/
+data/checkpoints/
 
 # Keep small sample data
 !data/samples/
