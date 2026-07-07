@@ -17,3 +17,7 @@ data/checkpoints/
 # Keep small sample data
 !data/samples/
 !data/samples/sample_records.json
+
+# Spark
+ipynb_checkpoints
+Untitled.ipynb
