@@ -11,7 +11,8 @@ data/raw/
 data/output/
 data/processed/
 data/bronze/
-data/silver
+data/silver/
+data/gold/
 data/checkpoints/
 
 # Keep small sample data
@@ -19,5 +20,4 @@ data/checkpoints/
 !data/samples/sample_records.json
 
 # Spark
-ipynb_checkpoints
-Untitled.ipynb
+notebooks/
