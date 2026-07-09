@@ -33,7 +33,7 @@ Gold Layer: analytics-ready reporting tables
 | Language | Python |
 | Streaming broker | Apache Kafka, Azure Event Hubs |
 | Stream processing | Spark Structured Streaming / PySpark, Azure Databricks Serverless |
-| Storage format | Parquet |
+| Storage format | Parquet | Delta Lake |
 | Storage | Local filesystem, ADLS Gen2 |
 | Cloud | Azure Event Hubs, Azure Databricks, ADLS Gen2 |
 | Local runtime | WSL, Docker, Docker Compose |
@@ -277,6 +277,27 @@ lakehouse/
 │   ├── data_freshness/
 │   └── data_completeness/
 └── checkpoints/
+```
+
+### Delta Lake Upgrade
+
+The Azure version was upgraded from Parquet outputs to Delta Lake tables for the Bronze, Silver, and Gold layers.
+
+Delta outputs:
+
+```text
+lakehouse/
+├── bronze_delta/
+│   ├── air_quality_raw/
+│   └── air_quality_structured/
+├── silver_delta/
+│   └── air_quality/
+├── gold_delta/
+│   ├── daily_city_aqi/
+│   ├── daily_city_ranking/
+│   ├── data_freshness/
+│   └── data_completeness/
+└── checkpoints_delta/
 ```
 
 ## Notes
