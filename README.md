@@ -8,7 +8,7 @@ It ingests air-quality data from the Open-Meteo API, publishes records to a Kafk
 
 The goal of this project is to demonstrate practical data engineering skills using Python API ingestion, Apache Kafka, Spark Structured Streaming, PySpark transformations, Parquet-based lakehouse layers, data validation, deduplication, and Gold analytics tables for BI/reporting.
 
-## Architecture
+## Local Architecture
 
 ```text
 Open-Meteo Air Quality API
@@ -31,10 +31,13 @@ Gold Layer: analytics-ready reporting tables
 | Area | Tools |
 |---|---|
 | Language | Python |
-| Streaming broker | Apache Kafka |
-| Stream processing | Spark Structured Streaming / PySpark |
+| Streaming broker | Apache Kafka, Azure Event Hubs |
+| Stream processing | Spark Structured Streaming / PySpark, Azure Databricks Serverless |
 | Storage format | Parquet |
+| Storage | Local filesystem, ADLS Gen2 |
+| Cloud | Azure Event Hubs, Azure Databricks, ADLS Gen2 |
 | Local runtime | WSL, Docker, Docker Compose |
+| Governance/Security | Unity Catalog External Location, Databricks Secrets |
 | Version control | Git / GitHub |
 
 ## Pipeline Layers
@@ -210,13 +213,71 @@ Completed:
 - Bronze Parquet output
 - Silver cleaned Parquet output
 - Gold analytics tables
+- Azure migration completed through Event Hubs, Databricks Serverless, and ADLS Gen2.
+- Bronze, Silver, and Gold layers are available both locally and in Azure.
 
 Next planned stages:
 
 - Power BI dashboard using Gold outputs
-- Azure integration with Event Hubs / Azure Databricks / ADLS Gen2
-- Delta Lake version of Bronze/Silver/Gold layers
 - Optional orchestration and monitoring improvements
+
+## Azure Migration
+
+The project was migrated from a local Kafka/Spark/Parquet pipeline to an Azure lakehouse-style architecture using Event Hubs, Databricks Serverless, Unity Catalog external locations, and ADLS Gen2.
+
+### Azure Architecture
+
+```text
+Open-Meteo Air Quality API
+        ↓
+Python Producer
+        ↓
+Azure Event Hubs
+        ↓
+Azure Databricks Serverless
+        ↓
+ADLS Gen2 Bronze Layer
+        ↓
+ADLS Gen2 Silver Layer
+        ↓
+ADLS Gen2 Gold Layer
+```
+
+### Azure Components
+| Component                       | Purpose                                  |
+| ------------------------------- | ---------------------------------------- |
+| Azure Event Hubs                | Kafka-compatible streaming ingestion     |
+| Azure Databricks Serverless     | Spark processing and notebook execution  |
+| ADLS Gen2                       | Cloud lakehouse storage                  |
+| Unity Catalog External Location | Governed access to ADLS paths            |
+| Databricks Secrets              | Secure storage of Event Hubs credentials |
+
+### Completed Azure Migration Steps
+- Published Open-Meteo AQI records to Azure Event Hubs using the Kafka-compatible endpoint.
+- Configured Databricks secrets for Event Hubs credentials.
+- Created an ADLS Gen2 lakehouse container with Bronze, Silver, Gold, and checkpoint folders.
+- Configured Databricks access to ADLS using an Access Connector and Unity Catalog external location.
+- Read Event Hubs messages from Databricks.
+- Wrote raw JSON messages to the Bronze layer.
+- Parsed Bronze JSON into structured records.
+- Created Silver cleaned, validated, and deduplicated AQI records.
+- Created Gold analytics tables for reporting.
+
+### Azure Data Lake Layout
+```text
+lakehouse/
+├── bronze/
+│   ├── air_quality_raw/
+│   └── air_quality_structured/
+├── silver/
+│   └── air_quality/
+├── gold/
+│   ├── daily_city_aqi/
+│   ├── daily_city_ranking/
+│   ├── data_freshness/
+│   └── data_completeness/
+└── checkpoints/
+```
 
 ## Notes
 
