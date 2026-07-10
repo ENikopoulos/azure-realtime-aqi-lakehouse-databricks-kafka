@@ -1,4 +1,3 @@
-python-dotenv     # load secrets from .env
-kafka-python   # Kafka-style producer to Azure Event Hubs
-pyspark           # local Spark exploration / Parquet reads
-ipykernel         # use your venv in Jupyter / VS Code notebooks
+python-dotenv==1.2.2     # load secrets from .env
+kafka-python==2.2.19   # Kafka-style producer to Azure Event Hubs
+pyspark==4.1.2           # local Spark exploration / Parquet reads
