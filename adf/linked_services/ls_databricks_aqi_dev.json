@@ -1,0 +1,12 @@
+{
+    "name": "ls_databricks_aqi_dev",
+    "type": "Microsoft.DataFactory/factories/linkedservices",
+    "properties": {
+        "annotations": [],
+        "type": "AzureDatabricks",
+        "typeProperties": {
+            "domain": "https://adb-<workspace-id>.<region-id>.azuredatabricks.net",
+            "encryptedCredential": "<CONFIGURE_IN_AZURE_DATA_FACTORY>"
+        }
+    }
+}

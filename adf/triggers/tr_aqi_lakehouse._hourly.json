@@ -1,0 +1,25 @@
+{
+    "name": "tr_aqi_lakehouse_hourly",
+    "properties": {
+        "annotations": [],
+        "runtimeState": "Stopped",
+        "pipelines": [
+            {
+                "pipelineReference": {
+                    "referenceName": "pl_aqi_lakehouse",
+                    "type": "PipelineReference"
+                }
+            }
+        ],
+        "type": "ScheduleTrigger",
+        "typeProperties": {
+            "recurrence": {
+                "frequency": "Hour",
+                "interval": 1,
+                "startTime": "2026-07-10T12:04:00",
+                "endTime": "2026-07-11T00:00:00",
+                "timeZone": "GTB Standard Time"
+            }
+        }
+    }
+}
