@@ -215,6 +215,7 @@ Completed:
 - Gold analytics tables
 - Azure migration completed through Event Hubs, Databricks Serverless, and ADLS Gen2.
 - Bronze, Silver, and Gold layers are available both locally and in Azure.
+- Gold Delta outputs were registered as external Unity Catalog tables for Spark SQL / Databricks SQL access.
 
 Next planned stages:
 
@@ -298,6 +299,35 @@ lakehouse/
 │   ├── data_freshness/
 │   └── data_completeness/
 └── checkpoints_delta/
+```
+### Databricks Gold Table Registration
+
+The Gold Delta outputs were registered as external Delta tables in Unity Catalog, making the analytics layer queryable through Databricks SQL and Spark SQL.
+
+Registered catalog and schema:
+
+```text
+Catalog: dbw_aqi_lakehouse_dev
+Schema: aqi_lakehouse
+```
+
+Registered Gold tables:
+
+| Table                | Description                                         |
+| -------------------- | --------------------------------------------------- |
+| `daily_city_aqi`     | Daily AQI and pollutant metrics by city             |
+| `daily_city_ranking` | Daily city ranking based on average European AQI    |
+| `data_freshness`     | Latest ingestion and measurement timestamps by city |
+| `data_completeness`  | Actual vs expected daily record counts by city      |
+
+This step registers table metadata over existing ADLS Gen2 Delta paths. The data remains stored in ADLS Gen2, while Databricks provides a table interface for querying and downstream BI/reporting.
+
+Example query:
+
+```sql
+SELECT *
+FROM dbw_aqi_lakehouse_dev.aqi_lakehouse.daily_city_aqi
+ORDER BY measurement_date, city;
 ```
 
 ## Notes
