@@ -2,20 +2,20 @@
 
 ## Project Overview
 
-This project implements an end-to-end air-quality lakehouse pipeline in both local and Azure environments.
+This project implements an air-quality lakehouse pipeline in local and Azure environments.
 
-Air-quality data is collected from the Open-Meteo API and published through a Kafka-compatible streaming layer. Apache Spark Structured Streaming processes the incoming records and writes them through Bronze, Silver, and Gold lakehouse layers.
+Air-quality data is collected from the Open-Meteo API and published through a Kafka-compatible streaming layer. Apache Spark Structured Streaming processes the incoming events through Bronze, Silver, and Gold lakehouse layers.
 
 The local implementation uses Apache Kafka, PySpark, Parquet, Docker, and the local filesystem. The Azure implementation uses Azure Event Hubs, Azure Databricks Serverless, Delta Lake, ADLS Gen2, Unity Catalog, Databricks Secrets, and Azure Data Factory.
 
-Azure Data Factory orchestrates a Databricks Workflow containing four dependent tasks:
+The Azure processing workflow was validated successfully through Azure Data Factory. ADF triggers a four-task Databricks Workflow:
 
 1. Event Hubs to Bronze Delta
 2. Bronze to Silver Delta
 3. Silver to Gold Delta
 4. Gold Delta table registration in Unity Catalog
 
-The project demonstrates API ingestion, event streaming, Spark Structured Streaming, Delta Lake, medallion architecture, data validation, deduplication, cloud storage, catalog governance, workflow orchestration, and analytics-ready Gold tables.
+The Python producer that sends Open-Meteo records to Event Hubs is currently executed separately. ADF schedules the Databricks processing workflow but does not currently deploy or schedule the producer. Therefore, the Azure implementation demonstrates the complete ingestion and transformation path, but it is not yet a fully autonomous cloud pipeline.
 
 
 ## Local Architecture
@@ -219,30 +219,44 @@ When duplicates exist, the record with the latest `ingestion_timestamp_utc` is k
 
 ### Completed
 
-* Open-Meteo API ingestion
-* Local Kafka producer and topic
-* Kafka-compatible Azure Event Hubs producer
-* Spark Structured Streaming ingestion
-* Local Bronze, Silver, and Gold Parquet layers
-* Azure Bronze, Silver, and Gold Delta Lake layers
-* Silver validation and deduplication rules
-* Gold analytics tables
-* ADLS Gen2 lakehouse storage
-* Databricks Serverless notebook execution
-* Databricks Secrets for Event Hubs credentials
-* Unity Catalog external location
-* Gold Delta table registration in Unity Catalog
-* Four-task Databricks Workflow
-* Azure Data Factory Databricks Job activity
-* ADF scheduled trigger
-* Successful end-to-end ADF pipeline runs
+- Open-Meteo API ingestion and record construction
+- Local Kafka producer and Kafka topic
+- Kafka-compatible Azure Event Hubs producer
+- Spark Structured Streaming ingestion
+- Local Bronze, Silver, and Gold Parquet layers
+- Azure Bronze, Silver, and Gold Delta Lake layers
+- Silver validation and deduplication rules
+- Gold analytics tables
+- ADLS Gen2 lakehouse storage
+- Databricks Serverless notebook execution
+- Databricks Secrets for Event Hubs credentials
+- Unity Catalog external location
+- Gold Delta table registration in Unity Catalog
+- Four-task Databricks Workflow
+- Azure Data Factory Databricks Job activity
+- Tested ADF schedule trigger
+- Successful ADF and Databricks workflow runs
+- Basic GitHub Actions CI
+- Unit tests for API URL construction, response validation, and record creation
+- Pinned Python dependencies
+- Safe .env.example configuration template
+
+### Current Limitations
+- The Event Hubs producer is executed manually and is not scheduled by ADF.
+- The committed ADF trigger is disabled to avoid additional Azure costs.
+- CI validates local Python logic and exported JSON but does not run cloud integration tests.
+- Azure resources must currently be recreated manually; Infrastructure as Code has not yet been added.
+- Local Silver and Gold jobs use full-output overwrites rather than incremental Delta merges.
+- Power BI has not yet been connected to the registered Azure Gold tables.
 
 ### Planned Enhancements
 
-* Power BI dashboard using the registered Gold tables
-* Automated data-quality tests
-* Infrastructure as Code
-* CI/CD deployment for Azure resources
+- Deploy and schedule the Event Hubs producer using Azure-managed compute
+- Add Spark transformation and data-quality tests
+- Add Terraform or Bicep for repeatable Azure deployment
+- Add CI/CD deployment for Azure resources and Databricks assets
+- Connect Power BI to the registered Unity Catalog Gold tables
+- Add monitoring, alerting, and failed-record handling
 
 ### Cost Management
 
@@ -253,14 +267,22 @@ The Azure implementation was validated successfully before the Azure free trial 
 The project was migrated from a local Kafka/Spark/Parquet pipeline to an Azure lakehouse-style architecture using Event Hubs, Databricks Serverless, Unity Catalog external locations, and ADLS Gen2.
 
 ### Azure Architecture
+The current Azure implementation contains two related but separately initiated flows.
+
+### Data Ingestion
+
 ```text
 Open-Meteo Air Quality API
         ↓
-Python Producer
+Python Event Hubs Producer
+currently executed separately
         ↓
 Azure Event Hubs
-        ↓
+```
+### Processing Orchestration
+```text
 Azure Data Factory Schedule Trigger
+currently disabled
         ↓
 ADF Databricks Job Activity
         ↓
@@ -276,6 +298,37 @@ Register Gold tables in Unity Catalog
         ↓
 ADLS Gen2 + Unity Catalog Gold Tables
 ```
+
+ADF controls the execution of the Databricks processing workflow. It does not currently invoke the Python producer. Before an ADF processing run can ingest new data, the producer must first publish records to Event Hubs.
+
+
+### Local Configuration
+
+Install the development environment with:
+```bash
+python -m pip install -r requirements-dev.txt
+```
+For Azure Event Hubs producer configuration:
+
+1. Copy .env.example to .env.
+2. Add the Event Hubs namespace, Event Hub name, Kafka bootstrap server, and connection string.
+3. Keep .env local and never commit it.
+4. Run the producer separately with:
+```bash
+python -m producer.produce_openmeteo_to_eventhub
+```
+The committed .env.example contains only empty placeholders. Real credentials remain excluded through .gitignore.
+
+### Continuous Integration
+
+GitHub Actions runs the following checks on pushes and pull requests to main:
+
+- Ruff linting for local Python source and tests
+- Python syntax compilation
+- Deterministic unit tests with pytest
+- JSON validation for exported Azure Data Factory files
+
+The CI workflow does not connect to Kafka, Event Hubs, Databricks, ADLS, ADF, or the Open-Meteo API. Cloud integration was validated manually and is documented through exported configurations and execution screenshots.
 
 ### Azure Components
 | Component                       | Purpose                                  |

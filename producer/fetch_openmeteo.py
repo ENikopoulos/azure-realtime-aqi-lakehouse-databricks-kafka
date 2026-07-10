@@ -1,12 +1,16 @@
 # Imports
 
 import json
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+REQUEST_TIMEOUT_SECONDS = 30
+MAX_FETCH_ATTEMPTS = 3
+RETRY_BACKOFF_SECONDS = 2
 
 HOURLY_VARIABLES = [
     "nitrogen_dioxide",
@@ -79,40 +83,117 @@ def build_url(city, hourly):
 
     return base_url + "?" + urllib.parse.urlencode(params)
 
+def validate_api_response(api_response):
+    """Validate the hourly arrays required to build AQI event records."""
 
-def fetch_data(api_url):
+    hourly = api_response.get("hourly")
+
+    if not isinstance(hourly, dict):
+        raise ValueError("Open-Meteo response is missing the 'hourly' object.")
+
+    required_fields = ["time", *HOURLY_VARIABLES]
+
+    missing_fields = [
+        field for field in required_fields if field not in hourly
+    ]
+
+    if missing_fields:
+        raise ValueError(
+            f"Open-Meteo response is missing hourly fields: {missing_fields}"
+        )
+
+    non_list_fields = [
+        field
+        for field in required_fields
+        if not isinstance(hourly[field], list)
+    ]
+
+    if non_list_fields:
+        raise ValueError(
+            f"Expected hourly fields to be arrays: {non_list_fields}"
+        )
+
+    field_lengths = {
+        field: len(hourly[field])
+        for field in required_fields
+    }
+
+    if field_lengths["time"] == 0:
+        raise ValueError("Open-Meteo response contains no hourly records.")
+
+    if len(set(field_lengths.values())) != 1:
+        raise ValueError(
+            f"Inconsistent Open-Meteo hourly array lengths: {field_lengths}"
+        )
+
+
+def fetch_data(
+    api_url,
+    max_attempts=MAX_FETCH_ATTEMPTS,
+    retry_backoff_seconds=RETRY_BACKOFF_SECONDS,
+):
     """
-    Fetch air-quality data from the Open-Meteo API.
+    Fetch and validate Open-Meteo data.
 
-    Sends an HTTP request to the provided API URL, reads the JSON response,
-    converts it into a Python dictionary, and records the UTC timestamp when
-    the response was received.
-
-    Parameters:
-        api_url (str): Full Open-Meteo API URL.
-
-    Returns:
-        tuple: A tuple containing:
-            - api_response (dict): Parsed JSON response from the API.
-            - ingestion_timestamp_utc (str): UTC timestamp when the response was fetched.
-
-    Raises:
-        urllib.error.HTTPError: If the API request fails with an HTTP error.
+    Retries temporary server, rate-limit, network, timeout, decoding,
+    and response-validation failures using exponential backoff.
     """
-    
-    try:
-        with urllib.request.urlopen(api_url, timeout=30) as response:
-            response_body = response.read().decode("utf-8")
-            ingestion_timestamp_utc = datetime.now(timezone.utc).isoformat()
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            with urllib.request.urlopen(
+                api_url,
+                timeout=REQUEST_TIMEOUT_SECONDS,
+            ) as response:
+                response_body = response.read().decode("utf-8")
+
             api_response = json.loads(response_body)
+            validate_api_response(api_response)
 
-        return api_response, ingestion_timestamp_utc
+            ingestion_timestamp_utc = datetime.now(
+                timezone.utc
+            ).isoformat()
 
-    except urllib.error.HTTPError as e:
-        error_body = e.read().decode("utf-8")
-        print("HTTP error:", e.code)
-        print("API error body:", error_body)
-        raise
+            return api_response, ingestion_timestamp_utc
+
+        except urllib.error.HTTPError as exc:
+            error_body = exc.read().decode(
+                "utf-8",
+                errors="replace",
+            )
+
+            print(f"Open-Meteo HTTP error {exc.code}: {error_body}")
+
+            retryable_http_error = (
+                exc.code == 429 or 500 <= exc.code < 600
+            )
+
+            if not retryable_http_error or attempt == max_attempts:
+                raise
+
+            retry_reason = f"HTTP {exc.code}"
+
+        except (
+            urllib.error.URLError,
+            TimeoutError,
+            UnicodeDecodeError,
+            ValueError,
+        ) as exc:
+            if attempt == max_attempts:
+                raise
+
+            retry_reason = str(exc)
+
+        retry_delay = retry_backoff_seconds * (2 ** (attempt - 1))
+
+        print(
+            f"Open-Meteo request attempt {attempt} failed: "
+            f"{retry_reason}. Retrying in {retry_delay} seconds."
+        )
+
+        time.sleep(retry_delay)
+
+    raise RuntimeError("Open-Meteo request failed unexpectedly.")
 
 
 def build_records(city, api_response, ingestion_timestamp_utc):
@@ -131,6 +212,8 @@ def build_records(city, api_response, ingestion_timestamp_utc):
     Returns:
         list: List of event records ready to be saved locally or sent to Kafka.
     """
+    validate_api_response(api_response)
+
     event_records = []
 
     for i in range(len(api_response["hourly"]["time"])):
