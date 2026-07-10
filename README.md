@@ -48,6 +48,7 @@ Gold Layer: analytics-ready reporting tables
 | Storage | Local filesystem, ADLS Gen2 |
 | Orchestration | Azure Data Factory, Databricks Workflows |
 | Governance | Unity Catalog external locations |
+| Catalog / SQL access | Unity Catalog, Spark SQL |
 | Secrets management | Databricks Secrets |
 | Local runtime | WSL, Docker, Docker Compose |
 | Version control | Git, GitHub |
@@ -259,19 +260,21 @@ Python Producer
         ↓
 Azure Event Hubs
         ↓
-        └──────────────────────────────┐
-                                       ↓
-Azure Data Factory Schedule Trigger    Event Hubs → Bronze Delta
-        ↓                                      ↓
-ADF Databricks Job Activity            Bronze Delta → Silver Delta
-        ↓                                      ↓
-Azure Databricks Workflow              Silver Delta → Gold Delta
-                                               ↓
-                                  Register Gold tables
-                                               ↓
-                                           ADLS Gen2
-                                               ↓
-                                 Unity Catalog Gold Tables
+Azure Data Factory Schedule Trigger
+        ↓
+ADF Databricks Job Activity
+        ↓
+Azure Databricks Workflow
+        ↓
+Event Hubs → Bronze Delta
+        ↓
+Bronze Delta → Silver Delta
+        ↓
+Silver Delta → Gold Delta
+        ↓
+Register Gold tables in Unity Catalog
+        ↓
+ADLS Gen2 + Unity Catalog Gold Tables
 ```
 
 ### Azure Components
