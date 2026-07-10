@@ -58,20 +58,27 @@
 
 ## Future Azure Architecture
 
+### Azure Architecture
 ```text
-Open-Meteo AQI API
+Open-Meteo Air Quality API
         ↓
 Python Producer
         ↓
-Azure Event Hubs Kafka endpoint
+Azure Event Hubs
         ↓
-Azure Databricks Structured Streaming
+Azure Data Factory Schedule Trigger
         ↓
-Bronze Delta tables on ADLS Gen2
+ADF Databricks Job Activity
         ↓
-Silver Delta tables on ADLS Gen2
+Azure Databricks Workflow
         ↓
-Gold Delta tables on ADLS Gen2
+Event Hubs → Bronze Delta
         ↓
-Power BI
+Bronze Delta → Silver Delta
+        ↓
+Silver Delta → Gold Delta
+        ↓
+Register Gold tables in Unity Catalog
+        ↓
+ADLS Gen2 + Unity Catalog Gold Tables
 ```
